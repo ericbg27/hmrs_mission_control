@@ -52,21 +52,22 @@ def distribute(task: Task, role):
                     if k + 1 == len(method.subtasks):
                         pass
                     else:
-                        if is_assigned(ktask, role):
-                            next_task = method.subtasks[k+1]
-                            if not is_assigned(next_task, role):
-                                # assigned to this, and  not the next
-                                # = notify the next
-                                smt = create_send_message(next_task, ktask, role)
-                                nsubtasks.append(smt)
-                        elif is_assigned(method.subtasks[k+1], role):
-                            # not assign to this, but to the next
-                            prev_task = method.subtasks[k]
-                            wmt = create_wait_message(prev_task, role)
-                            nsubtasks.append(wmt)
-                        else:
-                            pass
-                            # noop
+                        if type(method.subtasks[k+1]) == type(ElementaryTask):
+                            if is_assigned(ktask, role):
+                                next_task = method.subtasks[k+1]
+                                if not is_assigned(next_task, role):
+                                    # assigned to this, and  not the next
+                                    # = notify the next
+                                    smt = create_send_message(next_task, ktask, role)
+                                    nsubtasks.append(smt)
+                            elif is_assigned(method.subtasks[k+1], role):
+                                # not assign to this, but to the next
+                                prev_task = method.subtasks[k]
+                                wmt = create_wait_message(prev_task, role)
+                                nsubtasks.append(wmt)
+                            else:
+                                pass
+                                # noop
             n_method = method.clone()
             n_method.subtasks = nsubtasks
             n_methods.append(n_method)

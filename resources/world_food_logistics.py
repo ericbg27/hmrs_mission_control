@@ -39,18 +39,24 @@ class Defs(object):
 
 class task_type(Defs):
     NAV_TO = 'navigation'
-    APPROACH_PERSON = 'approach_person'
-    AUTHENTICATE_PERSON = 'authenticate_person'
-    OPERATE_DRAWER = 'operate_drawer'
+    APPROACH_HUMAN = 'approach_human'
     APPROACH_ROBOT = 'approach_robot'
-    PICK_UP = 'pick_up'
-    DEPOSIT = 'deposit'
+    GRASP_MEAL = 'grasp_meal'
+    DELIVER_MEAL_TO_PATIENT = 'deliver_meal_to_patient'
+    WAIT_FOR_HUMAN_TO_FETCH = 'wait_for_human_to_fetch'
+    WAIT_FOR_HUMAN_TO_PLACE_DISH = 'wait_for_human_to_place_dish'
+    LOAD_DISHES = 'load_dishes'
+    APPROACH_DOOR = 'approach_door'
+    OPEN_DOOR = 'open_door'
+    WAIT_FOR_DOOR_OPENING = 'wait_for_door_opening'
+    PICKUP_DISHES_WITH_ROBOT = 'pickup_dishes_with_robot'
+    RETRIEVE_DISHES = 'retrieve_dishes'
     
 all_skills = task_type().all()
-carry_robot_skills = task_type().all_but(task_type.PICK_UP, task_type.DEPOSIT)
+carry_robot_skills = task_type().all_but(task_type.WAIT_FOR_HUMAN_TO_FETCH, task_type.WAIT_FOR_HUMAN_TO_PLACE_DISH)
 
 class poi(Enum):
-    respiratory_control = POI("Respiratory Control")
+    respiratory_control = POI("Kitchen")
     ic_corridor = POI("IC Corridor")
     pc_corridor = POI("PC Corridor")
     ic_room_1 = POI("IC Room 1")
@@ -83,9 +89,9 @@ near_ic_pc_rooms = [ poi_.value for poi_ in [
               poi.pc_room_3, poi.pc_room_4, poi.pc_room_5, poi.pc_room_6, 
               poi.pc_room_7, poi.pc_room_8]]
 
-nurse =  Role('nurse', type=Role.Type.NOT_MANAGED)
-lab_arm = Role('lab_arm', type=Role.Type.NOT_MANAGED)
+patient =  Role('patient', type=Role.Type.NOT_MANAGED)
 r1 = Role('r1')
+r2 = Role('r2')
 
 # Defined as Enum so we can reference methods and tasks, and we can have references
 # to names that we later on set on them with set_name()
@@ -94,21 +100,21 @@ def pickup_ihtn(pickup_location):
     class lab_samples_ihtn(Enum):
         # elementary tasks
         navto_room = ElementaryTask(task_type.NAV_TO, destination=pickup_location, assign_to=[r1])
-        approach_nurse = ElementaryTask(task_type.APPROACH_PERSON, target=nurse, assign_to=[r1])
-        authenticate_nurse = ElementaryTask(task_type.AUTHENTICATE_PERSON, target=nurse, assign_to=[r1])
-        open_drawer_for_nurse = ElementaryTask(task_type.OPERATE_DRAWER, action='open', assign_to=[r1])
-        deposit = ElementaryTask(task_type.DEPOSIT, assign_to = [nurse])
-        close_drawer_nurse = ElementaryTask(task_type.OPERATE_DRAWER, action='close', assign_to=[r1])
+        approach_patient = ElementaryTask(task_type.APPROACH_HUMAN, target=patient, assign_to=[r1])
+        authenticate_patient = ElementaryTask(task_type.APPROACH_ROBOT, target=patient, assign_to=[r1])
+        open_drawer_for_patient = ElementaryTask(task_type.GRASP_MEAL, action='open', assign_to=[r1])
+        deposit = ElementaryTask(task_type.WAIT_FOR_HUMAN_TO_PLACE_DISH, assign_to = [patient])
+        close_drawer_patient = ElementaryTask(task_type.GRASP_MEAL, action='close', assign_to=[r1])
         navto_lab = ElementaryTask(task_type.NAV_TO, destination=poi.laboratory.value, assign_to=[r1])
-        approach_arm = ElementaryTask(task_type.APPROACH_ROBOT, target=lab_arm, assign_to=[r1])
-        open_drawer_lab = ElementaryTask(task_type.OPERATE_DRAWER, action='open', assign_to=[r1])
-        pick_up_sample  = ElementaryTask(task_type.PICK_UP, target=r1, assign_to=[lab_arm])
-        close_drawer_lab = ElementaryTask(task_type.OPERATE_DRAWER, action='close', assign_to=[r1])
+        approach_arm = ElementaryTask(task_type.DELIVER_MEAL_TO_PATIENT, tadeliver_meal_to_patientto=[r1])
+        open_drawer_lab = ElementaryTask(task_type.GRASP_MEAL, action='open', assign_to=[r1])
+        pick_up_sample  = ElementaryTask(task_type.WAIT_FOR_HUMAN_TO_FETCH, target=r1, assign_to=[lab_arm])
+        close_drawer_lab = ElementaryTask(task_type.GRASP_MEAL, action='close', assign_to=[r1])
 
         # methods and abstract tasks
-        m_deposit = Method(subtasks = [open_drawer_for_nurse, deposit, close_drawer_nurse])
+        m_deposit = Method(subtasks = [open_drawer_for_patient, deposit, close_drawer_patient])
         deposit_sample_on_delivery_bot = AbstractTask(methods=[m_deposit])
-        m_retrieve = Method(subtasks = [approach_nurse, authenticate_nurse, deposit_sample_on_delivery_bot])
+        m_retrieve = Method(subtasks = [approach_patient, authenticate_patient, deposit_sample_on_delivery_bot])
         retrive_sample = AbstractTask(methods=[m_retrieve])
         m_unload = Method(subtasks=[open_drawer_lab, pick_up_sample, close_drawer_lab])
         unload_sample = AbstractTask(methods=[m_unload])
@@ -165,11 +171,19 @@ routes_ed = container[RoutesEnvironmentDescriptor]
 nav_sd = container[NavigationSkillDescriptor]
 
 # constant estimatives
-approach_person_time = 2
-authenticate_person_time = 2
-operate_drawer_time = 2
+approach_human_time = 2
 approach_robot_time = 2
-pick_up_time = 2
+grasp_meal_time = 2
+deliver_meal_to_patient_time = 2
+wait_for_human_to_fetch_time = 2
+wait_for_human_to_place_dish_time = 2
+load_dishes_time = 2
+apporach_door_time = 2
+open_door_time = 2
+wait_for_door_opening_time = 2
+pickup_dishes_with_robot_time = 2
+retrieve_dishes_time = 2
+approach_door_time = 2
 send_message_time = 2
 wait_message_time = 2
 
@@ -180,11 +194,18 @@ cp.set(PLAN_MINIMUM_TARGET_BATTERTY_CHARGE_CONST, 0.08)
 
 # skill desc
 nav_sd = container[NavigationSkillDescriptor]
-approach_person_sd = generic_skill_descriptor_constant_cost_factory('approach_person', approach_person_time)
-authenticate_person_sd = generic_skill_descriptor_constant_cost_factory('authenticate_person', authenticate_person_time)
-operate_drawer_sd = generic_skill_descriptor_constant_cost_factory('operate_drawer', operate_drawer_time)
+approach_human_sd = generic_skill_descriptor_constant_cost_factory('approach_human', approach_human_time)
 approach_robot_sd = generic_skill_descriptor_constant_cost_factory('approach_robot', approach_robot_time)
-pick_up_sd = generic_skill_descriptor_constant_cost_factory('pick_up', pick_up_time)
+grasp_meal_sd = generic_skill_descriptor_constant_cost_factory('grasp_meal', grasp_meal_time)
+deliver_meal_to_patient_sd = generic_skill_descriptor_constant_cost_factory('deliver_meal_to_patient', deliver_meal_to_patient_time)
+wait_for_human_to_fetch_sd = generic_skill_descriptor_constant_cost_factory('wait_for_human_to_fetch', wait_for_human_to_fetch_time)
+wait_for_human_to_place_dish_sd = generic_skill_descriptor_constant_cost_factory('wait_for_human_to_place_dish', wait_for_human_to_place_dish_time)
+load_dishes_sd = generic_skill_descriptor_constant_cost_factory('load_dishes', load_dishes_time)
+open_door_sd = generic_skill_descriptor_constant_cost_factory('open_door', open_door_time)
+wait_for_door_opening_sd = generic_skill_descriptor_constant_cost_factory('wait_for_door_opening', wait_for_door_opening_time)
+pickup_dishes_with_robot_sd = generic_skill_descriptor_constant_cost_factory('pickup_dishes_with_robot', pickup_dishes_with_robot_time)
+retrieve_dishes_sd = generic_skill_descriptor_constant_cost_factory('retrieve_dishes', retrieve_dishes_time)
+approach_door_sd = generic_skill_descriptor_constant_cost_factory('approach_door', approach_door_time)
 
 send_message_sd = generic_skill_descriptor_constant_cost_factory('send_message', send_message_time)
 wait_message_sd = generic_skill_descriptor_constant_cost_factory('wait_message', wait_message_time)
@@ -196,11 +217,18 @@ sync_type_WAIT_MESSAGE = SyncTask.SyncType.WAIT_MESSAGE.value
 # skill desc container singleton
 sd_register = SkillDescriptorRegister( 
         (task_type.NAV_TO, nav_sd), 
-        (task_type.APPROACH_PERSON, approach_person_sd),
-        (task_type.AUTHENTICATE_PERSON, authenticate_person_sd),
-        (task_type.OPERATE_DRAWER, operate_drawer_sd),
+        (task_type.APPROACH_HUMAN, approach_human_sd),
         (task_type.APPROACH_ROBOT, approach_robot_sd),
-        (task_type.PICK_UP, pick_up_sd),
+        (task_type.GRASP_MEAL, grasp_meal_sd),
+        (task_type.DELIVER_MEAL_TO_PATIENT, deliver_meal_to_patient_sd),    
+        (task_type.WAIT_FOR_HUMAN_TO_FETCH, wait_for_human_to_fetch_sd),
+        (task_type.WAIT_FOR_HUMAN_TO_PLACE_DISH, wait_for_human_to_place_dish_sd),
+        (task_type.LOAD_DISHES, load_dishes_sd),
+        (task_type.OPEN_DOOR, open_door_sd),
+        (task_type.WAIT_FOR_DOOR_OPENING, wait_for_door_opening_sd),
+        (task_type.PICKUP_DISHES_WITH_ROBOT, pickup_dishes_with_robot_sd),
+        (task_type.RETRIEVE_DISHES, retrieve_dishes_sd),
+        (task_type.APPROACH_DOOR, approach_door_sd),
         (sync_type_SEND_MESSAGE, send_message_sd),
         (sync_type_WAIT_MESSAGE, wait_message_sd)
     )
